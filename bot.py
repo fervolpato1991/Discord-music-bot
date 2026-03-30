@@ -14,19 +14,14 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 FFMPEG_PATH = "C:/ffmpeg/bin/ffmpeg.exe"
 
 ytdl_format_options = {
-    'format': 'bestaudio[ext=webm]/bestaudio/best',
+    'format': 'bestaudio/best',
     'quiet': True,
-    'noplaylist': True,
-    'http_chunk_size': 1048576,
-    'extractor_args': {
-        'youtube': {
-            'player_client': ['android'] 
-        }
-    }
+    'noplaylist': True
 }
 
 ffmpeg_options = {
-    'options': '-vn'
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+    'options': '-vn -filter:a "volume=1.5"'
 }
 
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
@@ -60,12 +55,11 @@ async def play(ctx, *, url):
 
     stream_url = data['url']
 
-    source = await discord.FFmpegOpusAudio.from_probe(
-        stream_url,
-        executable=FFMPEG_PATH,
-        method="fallback",  
-        **ffmpeg_options
-    )
+    source = discord.FFmpegOpusAudio(
+    stream_url,
+    executable=FFMPEG_PATH,
+    **ffmpeg_options
+)
 
     ctx.voice_client.play(source)
 
@@ -75,5 +69,23 @@ async def play(ctx, *, url):
 async def leave(ctx):
     if ctx.voice_client:
         await ctx.voice_client.disconnect()
+
+@bot.command()
+async def pause(ctx):
+    if ctx.voice_client and ctx.voice_client.is_playing():
+        ctx.voice_client.pause()
+        await ctx.send("⏸️ Pausado")
+
+@bot.command()
+async def resume(ctx):
+    if ctx.voice_client and ctx.voice_client.is_paused():
+        ctx.voice_client.resume()
+        await ctx.send("▶️ Resumido")
+
+@bot.command()
+async def stop(ctx):
+    if ctx.voice_client:
+        ctx.voice_client.stop()
+        await ctx.send("⏹️ Detenido")
 
 bot.run(os.getenv("DISCORD_TOKEN"))
