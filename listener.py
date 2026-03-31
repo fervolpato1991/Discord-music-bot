@@ -1,4 +1,3 @@
-print("Listener iniciado")
 import time
 import requests
 import psutil
@@ -26,12 +25,16 @@ def bot_ya_corriendo():
             pass
     return False
 
+ultimo_estado = None
+
 while True:
     try:
         r = requests.get(URL)
         estado = r.text.strip()
 
-        log(f"Estado leído: {estado}")
+        if estado != ultimo_estado:
+            log(f"Estado cambiado: {estado}")
+            ultimo_estado = estado
 
         if estado == "ON" and not bot_ya_corriendo():
             log("Encendiendo bot...")

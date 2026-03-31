@@ -14,7 +14,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 FFMPEG_PATH = "C:/ffmpeg/bin/ffmpeg.exe"
 
 ytdl_format_options = {
-    'format': 'bestaudio/best',
+    'format': 'bestaudio',
+    'outtmpl': 'song.%(ext)s',
     'quiet': True,
     'noplaylist': True
 }
@@ -30,7 +31,7 @@ ffmpeg_options = {
         '-vn '
         '-ac 2 '
         '-ar 48000 '
-        '-af "aresample=async=1,volume=2.0"'
+        '-af "aresample=async=1,volume=1.2"'
     )
 }
 
@@ -59,17 +60,25 @@ async def play(ctx, *, url):
     if vc.is_playing():
         vc.stop()
 
-    loop = bot.loop
-    data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
+    if os.path.exists("song.mp3"):
+        os.remove("song.mp3")
 
-    stream_url = data['url']
+    loop = bot.loop
+
+    def download():
+        return ytdl.extract_info(url, download=True)
+
+    data = await loop.run_in_executor(None, download)
+
+    filename = ytdl.prepare_filename(data)
 
     source = discord.PCMVolumeTransformer(
         discord.FFmpegPCMAudio(
-            stream_url,
+            filename,
             executable=FFMPEG_PATH,
-            **ffmpeg_options
-        )
+            options='-vn'
+        ),
+        volume=1.0
     )
 
     vc.play(source)
@@ -105,5 +114,10 @@ async def stop(ctx):
     if vc:
         vc.stop()
         await ctx.send("⏹️ Detenido")
+
+@bot.command()
+async def shutdown(ctx):
+    await ctx.send("Apagando bot...")
+    await bot.close()
 
 bot.run(os.getenv("DISCORD_TOKEN"))
