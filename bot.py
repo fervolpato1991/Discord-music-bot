@@ -16,9 +16,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 FFMPEG_PATH = "C:/ffmpeg/bin/ffmpeg.exe"
 
 ytdl_format_options = {
-    'format': 'bestaudio',
-    'outtmpl': 'song.%(ext)s',
-    'quiet': True,
+    'format': 'bestaudio/best',
+    'outtmpl': 'song_%(id)s.%(ext)s',
+    'quiet': False,
     'noplaylist': True
 }
 
@@ -76,18 +76,17 @@ async def play(ctx, *, url):
 
     data = await loop.run_in_executor(None, download)
     filename = ytdl.prepare_filename(data)
-
+    
     if vc.is_playing() or vc.is_paused():
         vc.stop()
-
-    await asyncio.sleep(1)
-
-    for file in os.listdir():
-        if file.startswith("song_") and file != filename:
-            try:
-                os.remove(file)
-            except:
-                pass
+        await asyncio.sleep(1)
+        
+        for file in os.listdir():
+            if file.startswith("song_"):
+                try:
+                    os.remove(file)
+                except:
+                    pass
 
     source = discord.PCMVolumeTransformer(
         discord.FFmpegPCMAudio(
