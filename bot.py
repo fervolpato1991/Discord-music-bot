@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import discord
 from discord.ext import commands
 import yt_dlp
+import subprocess
 
 load_dotenv()
 
@@ -48,6 +49,23 @@ async def join(ctx):
         await channel.connect()
     else:
         await ctx.send("No estás en un canal de voz")
+
+@bot.command()
+async def start(ctx):
+    await ctx.send("Intentando encender bot...")
+
+    import psutil
+    for p in psutil.process_iter():
+        try:
+            if "bot.py" in " ".join(p.cmdline()):
+                await ctx.send("El bot ya está encendido")
+                return
+        except:
+            pass
+
+    subprocess.Popen(["venv\\Scripts\\python.exe", "bot.py"])
+
+    await ctx.send("Bot iniciado")
 
 @bot.command()
 async def play(ctx, *, url):
@@ -122,7 +140,7 @@ async def shutdown(ctx):
     await ctx.send("Apagando bot...")
 
     vc = ctx.voice_client
-    
+
     if vc:
         vc.stop()
         await vc.disconnect()
