@@ -17,6 +17,7 @@ FFMPEG_PATH = "C:/ffmpeg/bin/ffmpeg.exe"
 
 queue = []
 is_playing = False
+volume = 0.5
 
 ytdl_format_options = {
     'format': 'bestaudio[ext=webm]/bestaudio',
@@ -50,10 +51,11 @@ async def play_next(ctx):
 
     if len(queue) > 0:
         is_playing = True
-        url = queue.pop(0)
-
+        song = queue.pop(0)
+        url = song["url"]
+   
         vc = ctx.voice_client
-
+        
         loop = bot.loop
 
         def download():
@@ -70,7 +72,7 @@ async def play_next(ctx):
                 executable=FFMPEG_PATH,
                 options='-vn'
             ),
-            volume=1.0
+            volume=volume
         )
 
         def after_playing(error):
@@ -98,8 +100,24 @@ async def queue_list(ctx):
     if len(queue) == 0:
         await ctx.send("📭 Cola vacía")
     else:
-        msg = "\n".join([f"{i+1}. {url}" for i, url in enumerate(queue)])
+        msg = "\n".join([f"{i+1}. {song['title']}" for i, song in enumerate(queue)])
         await ctx.send(f"📜 Cola:\n{msg}")
+
+@bot.command()
+async def volume_cmd(ctx, vol: int):
+    global volume
+
+    if vol < 0 or vol > 100:
+        await ctx.send("❌ Volumen entre 0 y 100")
+        return
+
+    volume = vol / 100
+
+    vc = ctx.voice_client
+    if vc and vc.source:
+        vc.source.volume = volume
+
+    await ctx.send(f"🔊 Volumen: {vol}%")
 
 @bot.event
 async def on_ready():
@@ -129,10 +147,16 @@ async def play(ctx, *, url):
 
     if not ctx.voice_client:
         await ctx.invoke(join)
+    
+    loop = bot.loop
+    data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
+    
+    queue.append({
+    "url": url,
+    "title": data["title"]
+})
 
-    queue.append(url)
-
-    await ctx.send("➕ Canción agregada a la cola")
+    await ctx.send(f"➕ Agregado: {data['title']}")
 
     if not is_playing:
         await play_next(ctx)
@@ -165,6 +189,7 @@ async def leave(ctx):
 @bot.command()
 async def pause(ctx):
     vc = ctx.voice_client
+
     if vc and vc.is_playing():
         vc.pause()
         await ctx.send("⏸️ Pausado")
@@ -174,6 +199,7 @@ async def pause(ctx):
 @bot.command()
 async def resume(ctx):
     vc = ctx.voice_client
+
     if vc and vc.is_paused():
         vc.resume()
         await ctx.send("▶️ Reanudado")
