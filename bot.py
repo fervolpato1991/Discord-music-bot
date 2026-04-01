@@ -334,7 +334,6 @@ async def stop(ctx):
 
     if vc:
         vc.stop()
-
         is_playing = False
         queue.clear()
 
