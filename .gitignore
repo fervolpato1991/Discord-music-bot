@@ -6,6 +6,6 @@ __pycache__/
 .env
 .vscode/
 song.*
-listener.log
+*.log
 *.webm
 *.mp3
