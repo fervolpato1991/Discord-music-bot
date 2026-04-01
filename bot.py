@@ -10,6 +10,7 @@ load_dotenv()
 
 intents = discord.Intents.default()
 intents.message_content = True
+now_playing_message = None
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -45,6 +46,37 @@ ffmpeg_options = {
 }
 
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
+
+class PlayerControls(discord.ui.View):
+    def __init__(self, vc):
+        super().__init__(timeout=None)
+        self.vc = vc
+
+    @discord.ui.button(label="⏯️", style=discord.ButtonStyle.green)
+    async def pause_resume(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.vc.is_playing():
+            self.vc.pause()
+            await interaction.response.send_message("⏸️ Pausado", ephemeral=True)
+        elif self.vc.is_paused():
+            self.vc.resume()
+            await interaction.response.send_message("▶️ Reanudado", ephemeral=True)
+
+    @discord.ui.button(label="⏭️", style=discord.ButtonStyle.red)
+    async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.vc.is_playing():
+            self.vc.stop()
+            await interaction.response.send_message("⏭️ Saltado", ephemeral=True)
+
+    @discord.ui.button(label="⏹️", style=discord.ButtonStyle.grey)
+    async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.vc:
+            self.vc.stop()
+            await interaction.response.send_message("⏹️ Detenido", ephemeral=True)
+
+def progress_bar(current, total, length=20):
+    progress = int(length * current / total)
+    bar = "▬" * progress + "🔘" + "▬" * (length - progress)
+    return bar
 
 async def play_next(ctx):
     global is_playing
@@ -91,13 +123,50 @@ async def play_next(ctx):
 
         vc.play(source, after=after_playing)
 
+        global now_playing_message
+
+        duration = data.get("duration", 0)
+        
         embed = discord.Embed(
             title="🎵 Reproduciendo ahora",
-            description=f"**{title}**",
+            description=f"[{title}]({url})",
             color=discord.Color.green()
             )
-        embed.description += f"[{title}]({url})"
         
+        if "thumbnail" in data:
+            embed.set_thumbnail(url=data["thumbnail"])
+            
+        embed.add_field(name="⏱️ Progreso", value=progress_bar(0, duration), inline=False)
+        
+        view = PlayerControls(vc)
+        
+        if now_playing_message:
+            await now_playing_message.edit(embed=embed, view=view)
+        else:
+            now_playing_message = await ctx.send(embed=embed, view=view)
+        
+        async def update_progress(vc, message, duration):
+            current = 0
+            
+            while vc.is_playing() and current < duration:
+                await asyncio.sleep(5)
+                current += 5
+                
+                embed = message.embeds[0]
+                embed.set_field_at(
+                    0,
+                    name="⏱️ Progreso",
+                    value=progress_bar(current, duration),
+                    inline=False
+                )
+                
+                try:
+                    await message.edit(embed=embed)
+                except:
+                    break
+
+        bot.loop.create_task(update_progress(vc, now_playing_message, duration))
+
         if "thumbnail" in data:
             embed.set_thumbnail(url=data["thumbnail"])
             
