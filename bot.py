@@ -68,7 +68,7 @@ def format_queue():
         return "Vacía"
 
     text = ""
-    for i, song in enumerate(queue[:5]):  # mostramos solo 5
+    for i, song in enumerate(queue[:5]):
         text += f"`{i+1}.` {song['title']}\n"
 
     if len(queue) > 5:
@@ -114,8 +114,20 @@ class PlayerControls(discord.ui.View):
 
     @discord.ui.button(label="⏹️", style=discord.ButtonStyle.grey)
     async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.vc:
-            self.vc.stop()
+        vc = self.vc
+        
+        if vc:
+            vc.stop()
+            
+            await asyncio.sleep(1)
+            
+            global is_playing, queue
+            is_playing = False
+            queue.clear()
+            
+            if hasattr(vc, "current_file"):
+                safe_delete(vc.current_file)
+                
         await interaction.response.defer()
 
 def progress_bar(current, total, length=20):
@@ -137,7 +149,7 @@ async def update_progress_bar(vc, message, duration):
             embed = message.embeds[0]
 
             embed.set_field_at(
-                1,  # IMPORTANTE: posición del campo progreso
+                1,
                 name="⏱️ Progreso",
                 value=progress_bar(current, duration),
                 inline=False
@@ -147,6 +159,14 @@ async def update_progress_bar(vc, message, duration):
 
         except:
             break
+
+async def send_temp_message(ctx, embed, delay=5):
+    msg = await ctx.send(embed=embed)
+    await asyncio.sleep(delay)
+    try:
+        await msg.delete()
+    except:
+        pass
 
 async def play_next(ctx):
     global is_playing
@@ -297,6 +317,15 @@ async def start(ctx):
 async def play(ctx, *, url):
     global is_playing
 
+    async def delete_user_message_later(message, delay=10):
+        await asyncio.sleep(delay)
+        try:
+            await message.delete()
+        except:
+            pass
+        
+    bot.loop.create_task(delete_user_message_later(ctx.message, 10))
+
     if not ctx.voice_client:
         await ctx.invoke(join)
     
@@ -306,21 +335,42 @@ async def play(ctx, *, url):
     queue.append({
     "url": url,
     "title": data["title"]
-})
+    })
     
-    embed = discord.Embed(
-        title="➕ Agregado a la cola",
-        description=f"**{data['title']}**",
-        color=discord.Color.orange()
-        )
-    
-    await ctx.send(embed=embed)
+    await send_temp_message(
+        ctx,
+        discord.Embed(
+            title="➕ Agregado a la cola",
+            description=f"**{data['title']}**",
+            color=discord.Color.orange()
+            ),
+            delay=5
+    )
 
     if not is_playing: 
         await play_next(ctx)
     else:
         if not ctx.voice_client.is_playing():
             await play_next(ctx)
+
+    global now_playing_message
+    
+    if now_playing_message:
+        embed = now_playing_message.embeds[0]
+        
+        for i, field in enumerate(embed.fields):
+            if field.name == "📜 Próximas canciones":
+                embed.set_field_at(
+                    i,
+                    name="📜 Próximas canciones",
+                    value=format_queue(),
+                    inline=False
+                )
+                break
+        try:
+            await now_playing_message.edit(embed=embed)
+        except:
+            pass
 
 @bot.command()
 async def skip(ctx):
