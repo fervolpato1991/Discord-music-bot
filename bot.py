@@ -77,6 +77,18 @@ async def auto_cleanup_loop():
 
         await asyncio.sleep(30)
 
+async def auto_disconnect_if_idle(vc, delay=180):
+    await asyncio.sleep(delay)
+
+    try:
+        if vc and vc.is_connected():
+            if not vc.is_playing():
+                if len(queue) == 0:
+                    await vc.disconnect()
+                    print("🔌 Desconectado por inactividad")
+    except Exception as e:
+        print(f"Auto-disconnect error: {e}")
+
 def safe_delete(file, retries=5, delay=1):
     for i in range(retries):
         try:
@@ -203,6 +215,7 @@ async def play_next(ctx):
         song = queue.pop(0)
         url = song["url"]
         title = song["title"]
+        requester = song.get("requester")
    
         vc = ctx.voice_client
         
@@ -247,7 +260,7 @@ async def play_next(ctx):
             title="🎵 Reproduciendo ahora",
             description=f"[{title}]({url})",
             color=discord.Color.green()
-            )
+        )
         
         if "thumbnail" in data:
             embed.set_thumbnail(url=data["thumbnail"])
@@ -257,18 +270,22 @@ async def play_next(ctx):
                 name="⏱️ Duración",
                 value=f"{duration//60}:{duration%60:02}",
                 inline=True
-                )
+            )
             embed.add_field(
                 name="⏱️ Progreso",
                 value=progress_bar(0, duration),
                 inline=False
-                )
-            embed.add_field(name="👤 Pedido por", value=ctx.author.mention, inline=True)
+            )
+            embed.add_field(
+                name="👤 Pedido por",
+                value=f"{requester.mention}",
+                inline=True
+            )
             embed.add_field(
                 name="📜 Próximas canciones",
                 value=format_queue(),
                 inline=False
-                )
+            )
         
         view = PlayerControls(vc)
         
@@ -280,6 +297,10 @@ async def play_next(ctx):
 
     else:
         is_playing = False
+        
+        vc = ctx.voice_client
+        if vc:
+            bot.loop.create_task(auto_disconnect_if_idle(vc, delay=60))
 
 @bot.command()
 async def queue_list(ctx):
@@ -362,25 +383,25 @@ async def play(ctx, *, url):
     data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
     
     queue.append({
-    "url": url,
-    "title": data["title"]
+        "url": url,
+        "title": data["title"],
+        "requester": ctx.author
     })
-    
-    await send_temp_message(
-        ctx,
-        discord.Embed(
-            title="➕ Agregado a la cola",
-            description=f"**{data['title']}**",
-            color=discord.Color.orange()
-            ),
-            delay=5
-    )
 
     if not is_playing: 
         await play_next(ctx)
-    else:
-        if not ctx.voice_client.is_playing():
-            await play_next(ctx)
+    
+    bot.loop.create_task(
+        send_temp_message(
+            ctx,
+            discord.Embed(
+                title="➕ Agregado a la cola",
+                description=data["title"],
+                color=discord.Color.orange()
+            ),
+            delay=5
+        )
+    )
 
     global now_playing_message
     
