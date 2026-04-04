@@ -77,6 +77,17 @@ async def auto_cleanup_loop():
 
         await asyncio.sleep(30)
 
+async def refresh_panel(ctx, embed, view):
+    global now_playing_message
+
+    try:
+        if now_playing_message:
+            await now_playing_message.delete()
+    except:
+        pass
+
+    now_playing_message = await ctx.send(embed=embed, view=view)
+
 async def auto_disconnect_if_idle(vc, delay=180):
     await asyncio.sleep(delay)
 
@@ -289,12 +300,14 @@ async def play_next(ctx):
         
         view = PlayerControls(vc)
         
-        if now_playing_message:
-            await now_playing_message.edit(embed=embed, view=view)
-        else:
+        try:
+            if now_playing_message and now_playing_message.channel == ctx.channel:
+                await refresh_panel(ctx, embed, view)
+                bot.loop.create_task(update_progress_bar(vc, now_playing_message, duration))
+            else:
+                now_playing_message = await ctx.send(embed=embed, view=view)
+        except:
             now_playing_message = await ctx.send(embed=embed, view=view)
-            bot.loop.create_task(update_progress_bar(vc, now_playing_message, duration))
-
     else:
         is_playing = False
         
