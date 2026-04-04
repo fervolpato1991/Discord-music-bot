@@ -395,6 +395,29 @@ async def play(ctx, *, url):
     loop = bot.loop
     data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
     
+    # 🎵 PLAYLIST
+    if "entries" in data:
+        count = 0
+        for entry in data["entries"][:40]:  # máximo 40
+            if entry:
+                queue.append({
+                    "url": entry["webpage_url"],
+                    "title": entry.get("title", "Sin título"),
+                    "requester": ctx.author
+                })
+                count += 1
+        await ctx.send(f"📜 Playlist agregada: {count} canciones a la cola")
+
+        
+    # 🎵 VIDEO NORMAL
+    else:
+        queue.append({
+            "url": url,
+            "title": data["title"],
+            "requester": ctx.author
+        })
+        await ctx.send(f"🎶 Agregado: {data['title']}")
+    
     queue.append({
         "url": url,
         "title": data["title"],
