@@ -1,7 +1,7 @@
 # 🎵 Discord Music Bot Camaleon DJ
 
 <p align="center">
-  <img src="H:\discord-music-bot\Logo Camaleon Dj2.png" width="300"/>
+  <img src="./LogoCamaleonDj2.png" width="300"/>
 </p>
 
 Bot de música para Discord desarrollado en Python, con reproducción desde YouTube, sistema de cola, controles interactivos y panel dinámico tipo "Now Playing".
