@@ -202,6 +202,30 @@ async def update_progress_bar(vc, message, duration):
         except:
             break
 
+async def update_queue_panel():
+    global now_playing_message
+
+    if not now_playing_message:
+        return
+
+    try:
+        embed = now_playing_message.embeds[0]
+
+        for i, field in enumerate(embed.fields):
+            if field.name == "📜 Próximas canciones":
+                embed.set_field_at(
+                    i,
+                    name="📜 Próximas canciones",
+                    value=format_queue(),
+                    inline=False
+                )
+                break
+
+        await now_playing_message.edit(embed=embed)
+
+    except:
+        pass
+
 async def play_next(ctx):
     global is_playing
     vc = ctx.voice_client
@@ -393,6 +417,7 @@ async def play(ctx, *, url):
             add_to_queue(url, data["title"], ctx.author)
 
             await ctx.send(f"🎶 Agregado: {data['title']}")
+            await update_queue_panel()
 
     except Exception as e:
         await ctx.send(f"❌ Error al procesar: {e}")
