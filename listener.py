@@ -1,8 +1,9 @@
 import time
 import psutil
 import subprocess
-from datetime import datetime 
+import logging
 import os
+from datetime import datetime 
 
 STATE_FILE = "start.txt"
 
@@ -11,6 +12,14 @@ LOG_PATH = os.path.join(os.path.dirname(__file__), "listener.log")
 BOT_ACTIVO = False
 
 bot_running = False
+
+logging.basicConfig(
+    filename="logs/listener.log",
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+
+logging.info("Listener iniciado")
 
 def log(msg):
     print(msg)

@@ -3,6 +3,7 @@ import time
 import asyncio
 import discord
 import yt_dlp
+import logging
 from dotenv import load_dotenv
 from discord.ext import commands
 
@@ -39,6 +40,7 @@ ytdl_opts_playlist = {
 
 ytdl = yt_dlp.YoutubeDL(ytdl_opts)
 
+
 # =========================
 # ESTADO GLOBAL
 # =========================
@@ -51,6 +53,17 @@ now_playing_message = None
 # =========================
 # UTILIDADES
 # =========================
+
+if not os.path.exists("logs"):
+    os.makedirs("logs")
+
+logging.basicConfig(
+    filename="logs/bot.log",
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+
+print = logging.info
 
 def add_to_queue(url, title, requester):
     queue.append({
