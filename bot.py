@@ -18,7 +18,7 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-FFMPEG_PATH = "C:/ffmpeg/bin/ffmpeg.exe"
+FFMPEG_PATH = os.getenv("FFMPEG_PATH")
 
 ffmpeg_options = {
     'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
