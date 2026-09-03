@@ -9,7 +9,9 @@ from discord.ext import commands
 from urllib.parse import urlparse
 from music.models import Song
 from music.player import MusicPlayer
+from music.context import BotContext
 from music.services.music_services import MusicServices, MediaLoader
+from music.cogs.player_commands import PlayerCommands
 
 # =========================
 # CONFIG
@@ -64,9 +66,18 @@ ytdl = yt_dlp.YoutubeDL(ytdl_opts)
 # ESTADO GLOBAL
 # =========================
 
-player = MusicPlayer()
-services = MusicServices()
-loader = MediaLoader()
+context = BotContext()
+
+context.player = MusicPlayer()
+context.services = MusicServices()
+context.loader = MediaLoader()
+context.bot = bot
+
+
+# Compatibilidad temporal
+player = context.player
+services = context.services
+loader = context.loader
 
 # =========================
 # LOGGING
@@ -94,6 +105,9 @@ def add_to_queue(url, title, requester):
             webpage_url=url,
             requester=requester,
         )
+    )
+    logger.info(
+        f"Queue size: {len(player.queue._songs)}"
     )
 
 def format_queue():
@@ -246,13 +260,11 @@ async def handle_spotify(
 
         batch_size = 10
 
-        # Si la playlist está vacía
         if not spotify_tracks:
             await waiting_msg.delete()
             await ctx.send("❌ No se encontró ninguna canción.")
             return
 
-        # Comenzar a cargar el primer lote
         next_task = asyncio.create_task(
             loader.load_spotify_batch(
                 spotify_tracks,
@@ -261,7 +273,6 @@ async def handle_spotify(
             )
         )
 
-        # Procesar todos los lotes excepto el último
         for start in range(
             batch_size,
             len(spotify_tracks),
@@ -270,8 +281,6 @@ async def handle_spotify(
 
             media_list = await next_task
 
-            # Mientras procesamos este lote,
-            # comenzamos a cargar el siguiente.
             next_task = asyncio.create_task(
                 loader.load_spotify_batch(
                     spotify_tracks,
@@ -302,7 +311,6 @@ async def handle_spotify(
 
             await update_queue_panel()
 
-        # Procesar el último lote pendiente
         media_list = await next_task
 
         for media in media_list:
@@ -390,6 +398,17 @@ async def handle_youtube_playlist(
 
         entries = list(data["entries"])
 
+        logger.info(
+            f"Playlist dice tener {len(entries)} entradas"
+        )
+
+        logger.info("Primeras 20 canciones:")
+
+        for i, item in enumerate(entries[:20]):
+            logger.info(
+                f"{i}: {item.get('id')} - {item.get('title')}"
+            )
+
         added = 0
 
         for entry in entries:
@@ -415,6 +434,10 @@ async def handle_youtube_playlist(
             )
 
             added += 1
+
+        logger.info(
+            f"Queue final: {player.queue.size()}"
+        )
 
         await waiting_msg.delete()
 
@@ -588,16 +611,12 @@ class PlayerControls(discord.ui.View):
 
         vc = self.get_vc()
 
-        logger.info("BOTON SKIP")
-
         if vc:
 
             logger.info(f"is_playing={vc.is_playing()}")
             logger.info(f"is_paused={vc.is_paused()}")
 
             vc.stop()
-
-            logger.info("vc.stop ejecutado")
 
         await interaction.response.defer()
 
@@ -650,8 +669,6 @@ async def update_queue_panel():
 
 async def play_next(ctx):
 
-    logger.info("========== PLAY_NEXT ==========")
-
     vc = ctx.voice_client
 
     if vc is None or not vc.is_connected():
@@ -700,8 +717,6 @@ async def play_next(ctx):
 
             continue
 
-        logger.info(f"Reproduciendo: {song.title}")
-
         player.current_song = song
 
         try:
@@ -732,11 +747,26 @@ async def play_next(ctx):
             continue
 
         try:
+            ffmpeg_headers = ""
+
+            for key, value in media.http_headers.items():
+                ffmpeg_headers += f"{key}: {value}\r\n"
+
+            before_options = ffmpeg_before_options
+
+            if ffmpeg_headers:
+                    before_options += f' -headers "{ffmpeg_headers}"'
+
+            logger.info(
+                "Iniciando FFmpeg para '%s' con headers: %s",
+                media.title,
+                list(media.http_headers.keys()),
+            )
 
             raw_audio = discord.FFmpegPCMAudio(
                 media.stream_url,
                 executable=FFMPEG_PATH,
-                before_options=ffmpeg_before_options,
+                before_options=before_options,
                 **ffmpeg_options
             )
 
@@ -814,7 +844,18 @@ async def play_next(ctx):
 
 @bot.event
 async def on_ready():
+
     logger.info(f"✅ Conectado como {bot.user}")
+
+    if not hasattr(bot, "_cogs_loaded"):
+
+        await bot.add_cog(
+            PlayerCommands(context)
+        )
+
+        bot._cogs_loaded = True
+
+        logger.info("✅ PlayerCommands cargado.")
 
 @bot.event
 async def on_voice_state_update(member, before, after):
@@ -901,73 +942,6 @@ async def play(ctx, *, search: str):
         
         return
 
-@bot.command()
-async def skip(ctx):
-
-    vc = ctx.voice_client
-
-    if vc:
-
-        logger.info(f"is_playing={vc.is_playing()}")
-
-        logger.info(f"is_paused={vc.is_paused()}")
-
-        player.stopping = True
-
-        vc.stop()
-
-        logger.info("vc.stop ejecutado")
-
-@bot.command()
-async def stop(ctx):
-
-    vc = ctx.voice_client
-
-    if vc:
-
-        player.stopping = True
-
-        player.queue.clear()
-
-        player.cache.clear()
-
-        vc.stop()
-
-        await ctx.send(
-            "⏹️ Detenido y cola vaciada."
-        )
-
-@bot.command()
-async def pause(ctx):
-    vc = ctx.voice_client
-    if vc and vc.is_playing():
-        vc.pause()
-        await ctx.send(embed=discord.Embed(
-            description="⏸️ Canción pausada",
-            color=discord.Color.orange()
-        ))
-    else:
-        await ctx.send("No hay audio reproduciéndose.")
-
-@bot.command()
-async def resume(ctx):
-    vc = ctx.voice_client
-    if vc and vc.is_paused():
-        vc.resume()
-        await ctx.send("▶️ Reanudado")
-    else:
-        await ctx.send("No está en pausa.")
-
-@bot.command()
-async def leave(ctx):
-    vc = ctx.voice_client
-    if vc:
-        player.queue.clear()
-        player.cache.clear()
-        player.stopping = True
-        vc.stop()
-        await vc.disconnect()
-
 @bot.command(name="queue")
 async def queue_cmd(ctx):
     """Muestra la cola completa."""
@@ -988,29 +962,6 @@ async def queue_cmd(ctx):
         text += f"\n... y {len(items) - 15} más"
     embed = discord.Embed(title="📜 Cola de reproducción", description=text, color=discord.Color.blue())
     await ctx.send(embed=embed)
-
-@bot.command(name="vol")
-async def volume_cmd(ctx, vol: int):
-    """Ajusta el volumen (0-100). Ejemplo: !vol 80"""
-
-    if 0 <= vol <= 100:
-
-        player.volume = vol / 100
-
-        vc = ctx.voice_client
-
-        if vc and vc.source:
-            vc.source.volume = player.volume
-
-        await ctx.send(
-            f"🔊 Volumen ajustado a **{vol}%**"
-        )
-
-    else:
-
-        await ctx.send(
-            "El volumen debe estar entre **0** y **100**."
-        ) 
 
 @bot.command()
 async def shutdown(ctx):

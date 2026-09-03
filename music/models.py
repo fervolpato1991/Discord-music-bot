@@ -50,7 +50,6 @@ class Song:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 @dataclass(slots=True)
-
 class Media:
 
     title: str
@@ -64,8 +63,10 @@ class Media:
     thumbnail: str | None = None
 
     extractor: str = "youtube"
-    
+
     video_id: str | None = None
+
+    http_headers: dict[str, str] = field(default_factory=dict)
 
 @dataclass(slots=True)
 

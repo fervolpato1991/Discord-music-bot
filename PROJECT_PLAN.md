@@ -94,18 +94,18 @@ bot.py: orquestación de comandos y flujo de reproducción.
 
 Ante cualquier duda sobre la siguiente tarea, se deberá consultar este documento antes de modificar la arquitectura.
 
-## Etapa 1 — Consolidación de arquitectura (ACTUAL)
+# Etapa 1 — Consolidación de arquitectura
 
-Estado: En progreso
+Estado: Casi finalizada.
 
-### Arquitectura
+## Arquitectura
 
 - [x] Integrar completamente MusicPlayer.
 - [x] Eliminar QueueManager.
 - [x] Eliminar prefetch_cache.
 - [x] Centralizar el estado del reproductor.
 
-### Reproducción
+## Reproducción
 
 - [x] Estabilizar play_next().
 - [x] Corregir Skip.
@@ -114,83 +114,119 @@ Estado: En progreso
 - [x] Eliminar bucles de reproducción.
 - [x] Mantener reproducción continua.
 
-### Optimización
+## Optimización
 
-- [ ] Optimizar la incorporación masiva de canciones (Spotify, YouTube y futuros proveedores).
-- [ ] Optimizar playlists de Spotify mayores a 100 canciones.
-- [ ] Optimizar playlists grandes de YouTube.
-- [ ] Implementar cache de streams.
-- [ ] Probar toda la reproducción.
+- [x] Optimizar incorporación progresiva de playlists de Spotify.
+- [x] Optimizar playlists de Spotify mayores a 100 canciones.
+- [x] Crear una instancia independiente de yt-dlp por extracción.
+- [x] Optimizar playlists YouTube grandes.
+- [ ] Cache de streams.
+- [ ] Corregir casos donde algunas playlists de YouTube omiten videos.
+- [ ] Reducir microcortes esporádicos de reproducción.
+- [x] Pruebas de estabilidad prolongadas.
 
 ---
 
-## Etapa 2 — Organización del proyecto
+# Etapa 2 — Organización del proyecto
 
-Pendiente.
+Estado: Pendiente.
+
+## Refactor
 
 - [ ] Crear Cogs.
 - [ ] Separar comandos.
 - [ ] Separar eventos.
-- [ ] Separar interfaz (Views).
+- [ ] Separar Views.
+- [ ] Separar configuración.
+- [ ] Separar servicios del bot.
 
 ---
 
-## Etapa 3 — Funcionalidades
+# Etapa 3 — Funcionalidades
 
-Pendiente.
+Estado: Pendiente.
+
+## Reproductor
+
+- [ ] Loop.
+- [ ] LoopQueue.
+- [ ] Shuffle.
+- [ ] Remove.
+- [ ] Move.
+- [ ] Jump.
+- [ ] Queue limpia.
+
+## UX
 
 - [ ] Sistema Help.
 - [ ] Embed automático en #⭐comandos-dj.
-- [ ] Loop.
-- [ ] LoopQueue.
-- [ ] Radio.
+- [ ] Mejoras del panel.
+- [ ] Mensajes temporales.
+- [ ] Barra de progreso.
+
+## Música
+
+- [ ] Sistema Radio.
+- [ ] Radios online por país.
+- [ ] Radios de YouTube.
+- [ ] Radios por género musical.
+- [ ] Recomendación inteligente de radios.
+- [ ] Canal interactivo para ayudar a elegir una radio.
+
+## Música
+
 - [ ] Autoplay.
 - [ ] Favoritos.
 - [ ] Historial.
 - [ ] Letras.
-- [ ] Mejoras de experiencia de usuario.
 
 ---
 
-## Etapa 4 — Escalabilidad
+# Etapa 4 — Escalabilidad
 
-Pendiente.
+Estado: Pendiente.
 
-- [ ] Soporte para múltiples servidores.
+- [ ] Multi-servidor.
 - [ ] Configuración por servidor.
 - [ ] Persistencia.
 - [ ] Base de datos.
 - [ ] Estadísticas.
+- [ ] Dashboard web.
 
 ---
 
 # Tarea activa
 
-Optimizar la carga de playlists.
+Comenzar la organización mediante Cogs.
 
 ---
 
 # Próximo paso
 
-Finalizar completamente la Etapa 1.
+Separar los comandos.
 
 ---
 
 # Backlog
 
-Ideas aprobadas para el futuro.
-
 - Radio inteligente.
 - Autoplay avanzado.
-- Sistema de favoritos.
-- Historial de reproducción.
-- Letras de canciones.
-- Mejoras visuales del panel.
-- Estadísticas de uso.
-- Dashboard web.
+- Favoritos.
+- Historial.
+- Letras.
+- Mejoras visuales.
+- Estadísticas.
+- Dashboard.
 - Sistema de configuración.
 - Multi-servidor.
-- Otras mejoras que surjan durante el desarrollo.
+- Integración con Lavalink (opcional).
+
+---
+
+## Bugs conocidos
+
+- Algunos microcortes esporádicos durante la reproducción.
+- Algunas playlists de YouTube omiten videos restringidos o no extraíbles por yt-dlp.
 
 ---
 

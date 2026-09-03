@@ -81,11 +81,17 @@ class YoutubeService:
             f"No se encontraron resultados para: "
             f"{artist} - {title}"
         )
-
+    
     async def resolve_url(self, url: str) -> Media:
-
+        
+        logger.info(f"resolve_url() recibió: {url}")
+        
         data = await self._extract_info(url)
-
+        
+        logger.info(
+            f"yt-dlp devolvió: id={data.get('id')}  title={data.get('title')}"
+        )
+        
         return self._create_media(data)
     
     async def resolve_playlist(self, url: str) -> list[Media]:
@@ -140,6 +146,15 @@ class YoutubeService:
                 "No fue posible obtener la URL del stream."
             )
         
+        http_headers = data.get("http_headers") or {}
+
+        logger.info(
+            "Stream obtenido: id=%s extractor=%s headers=%s",
+            data.get("id", media.video_id),
+            data.get("extractor", media.extractor),
+            list(http_headers.keys()),
+        )
+
         return Media(
             title=media.title,
             webpage_url=media.webpage_url,
@@ -148,6 +163,7 @@ class YoutubeService:
             thumbnail=media.thumbnail,
             extractor=data.get("extractor", media.extractor),
             video_id=data.get("id", media.video_id),
+            http_headers=http_headers,
         )
 
     # ==========================================================
